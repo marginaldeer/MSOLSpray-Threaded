@@ -21,9 +21,9 @@ This script will perform password spraying against Microsoft Online accounts (Az
 epilog = """
 EXAMPLE USAGE:
 This command will use the provided userlist and attempt to authenticate to each account with a password of Winter2020.
-    python3 MSOLSpray.py --userlist ./userlist.txt --password Winter2020
+    python3 msol_spray.py --userlist ./userlist.txt --password Winter2020
 This command uses the specified FireProx URL to spray from randomized IP addresses and writes the output to a file. See this for FireProx setup: https://github.com/ustayready/fireprox.
-    python3 MSOLSpray.py --userlist ./userlist.txt --password P@ssword --url https://api-gateway-endpoint-id.execute-api.us-east-1.amazonaws.com/fireprox
+    python3 msol_spray.py --userlist ./userlist.txt --password P@ssword --url https://api-gateway-endpoint-id.execute-api.us-east-1.amazonaws.com/fireprox
 """
 
 parser = argparse.ArgumentParser(description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
