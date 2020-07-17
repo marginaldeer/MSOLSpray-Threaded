@@ -49,7 +49,7 @@ domain = args.domain
 url = args.url
 threads = int(args.threads)
 outfile = open(args.outfile, "w")
-
+print('-' * 50)
 
 handler = logging.StreamHandler()
 handler.setFormatter(
@@ -163,4 +163,7 @@ if __name__ == '__main__':
             threads
         )
     )
+print('-' * 50)
+print('Wrote enumerated users to: ./' + args.outfile)
+
 outfile.close()
